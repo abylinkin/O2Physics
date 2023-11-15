@@ -96,6 +96,8 @@ DECLARE_SOA_COLUMN(TriggerMaskFDD, triggerMaskFDD, uint8_t);       //! FDD trigg
 DECLARE_SOA_COLUMN(TotalFV0AmplitudeA, totalFV0AmplitudeA, float); //! sum of amplitudes on A side of FDD
 DECLARE_SOA_COLUMN(TimeFV0A, timeFV0A, float);                     //! FV0A average time
 DECLARE_SOA_COLUMN(TriggerMaskFV0A, triggerMaskFV0A, uint8_t);     //! FV0 trigger mask
+//Gap Side Information
+DECLARE_SOA_COLUMN(GapSide, gapSide, uint8_t); // 0 for side A, 1 for side C, 2 for both sides (or use an enum for better readability)
 // FIT selection flags
 // bits in range [0, 15] -> past BCs
 // bit 16 -> present BC
@@ -148,6 +150,19 @@ DECLARE_SOA_TABLE(UDCollisions, "AOD", "UDCOLLISION",
                   collision::NumContrib,
                   udcollision::NetCharge,
                   udcollision::RgtrwTOF);
+		  
+
+DECLARE_SOA_TABLE(SGCollisions, "AOD", "SGCOLLISION",
+                  o2::soa::Index<>,
+                  udcollision::GlobalBC,
+                  udcollision::RunNumber,
+                  collision::PosX,
+                  collision::PosY,
+                  collision::PosZ,
+                  collision::NumContrib,
+                  udcollision::NetCharge,
+                  udcollision::RgtrwTOF,
+		  udcollision::GapSide);
 
 DECLARE_SOA_TABLE(UDCollisionsSels, "AOD", "UDCOLLISIONSEL",
                   udcollision::TotalFT0AmplitudeA,
@@ -177,6 +192,7 @@ DECLARE_SOA_TABLE(UDMcCollsLabels, "AOD", "UDMCCOLLSLABEL",
                   udcollision::UDMcCollisionId);
 
 using UDCollision = UDCollisions::iterator;
+using SGCollision = SGCollisions::iterator;
 using UDCollisionsSel = UDCollisionsSels::iterator;
 using UDCollsLabel = UDCollsLabels::iterator;
 using UDMcCollsLabel = UDMcCollsLabels::iterator;

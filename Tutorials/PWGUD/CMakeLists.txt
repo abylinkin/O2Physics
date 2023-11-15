@@ -14,6 +14,11 @@ o2physics_add_dpl_workflow(udtutorial-01
                            PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore
                            COMPONENT_NAME Analysis)
 
+o2physics_add_dpl_workflow(udtutorial-01sg
+                           SOURCES UDTutorial_01sg.cxx
+                           PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore
+                           COMPONENT_NAME Analysis)
+
 o2physics_add_dpl_workflow(udtutorial-02a
                            SOURCES UDTutorial_02a.cxx
                            PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore

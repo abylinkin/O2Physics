@@ -80,6 +80,8 @@ struct UDTutorial03b {
       registry.add("Reco/mcEtaPt", "Generated events in acceptance; eta (1); Pt (GeV/c)", {HistType::kTH2F, {{300, -1.5, 1.5}, {250, 0.0, 5.0}}});
       registry.add("Reco/mcRap", "Generated events in acceptance; Rapidity (1)", {HistType::kTH1F, {{300, -1.5, 1.5}}});
       registry.add("Reco/mcMPt", "Generated events in acceptance; Mass (GeV/c^2); Pt (GeV/c)", {HistType::kTH2F, {{250, 2.5, 5.0}, {100, 0.0, 1.0}}});
+      registry.add("Reco/MGenMRec", "Generated vs Reconstructed Mass (GeV/c^2)", {HistType::kTH2F, {{250, 3.05, 3.15}, {250, 2.8, 3.5}}});
+      registry.add("Reco/MRes", "Mass Resolution (GeV/c^2)", {HistType::kTH1F, {{100, -.5, .5}}});
       registry.add("Reco/pDiff", "McTruth - reconstructed track momentum; McTruth - reconstructed track momentum; Entries", {HistType::kTH2F, {{240, -6., 6.}, {3, -1.5, 1.5}}});
     }
   }
@@ -513,6 +515,8 @@ struct UDTutorial03b {
       registry.get<TH2>(HIST("Reco/mcEtaPt"))->Fill(lv2_gen->Eta(), lv2_gen->Pt(), 1.);
       registry.get<TH1>(HIST("Reco/mcRap"))->Fill(lv_gen->Rapidity(), 1.);
       registry.get<TH2>(HIST("Reco/mcMPt"))->Fill(lv_gen->M(), lv_gen->Pt(), 1.);
+      registry.get<TH2>(HIST("Reco/MGenMRec"))->Fill(lv_gen->M(), lv_rec->M(), 1.);
+      registry.get<TH1>(HIST("Reco/MRes"))->Fill((lv_gen->M()-lv_rec->M()), 1.);
     }
   }
   PROCESS_SWITCH(UDTutorial03b, processReco, "Process reconstructed data", true);
