@@ -33,6 +33,14 @@ o2physics_target_root_dictionary(DGCutparHolder
                                  HEADERS DGCutparHolder.h
                                  LINKDEF DGCutparHolderLinkDef.h)
 
+o2physics_add_library(SGCutParHolder
+		SOURCES SGCutParHolder.cxx
+                      PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore)
+
+o2physics_target_root_dictionary(SGCutParHolder
+		      HEADERS SGCutParHolder.h
+		      LINKDEF SGCutParHolderLinkDef.h)
+
 o2physics_add_library(DGPIDSelector
                       SOURCES DGPIDSelector.cxx
                       PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore ROOT::EG)
