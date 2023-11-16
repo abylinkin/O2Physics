@@ -154,13 +154,15 @@ class SGSelector
       if (useSideA) {
         if (!udhelpers::cleanFITA(bc, diffCuts.maxFITtime(), diffCuts.FITAmpLimits())) {
           return 1;
-        } else
+        } else {
           return 0; // if we arrive here then the event is good!
+        } 
       } else {
         if (!udhelpers::cleanFITC(bc, diffCuts.maxFITtime(), diffCuts.FITAmpLimits())) {
           return 1;
-        } else
+        } else {
           return 0; // if we arrive here then the event is good!
+        }
       }
     }
 
@@ -247,13 +249,15 @@ class SGSelector
       if (useSideA) {
         if (!udhelpers::cleanFITA(bc, diffCuts.maxFITtime(), diffCuts.FITAmpLimits())) {
           return 1;
-        } else
+        } else {
           return 0; // if we arrive here then the event is good!
+        }
       } else {
         if (!udhelpers::cleanFITC(bc, diffCuts.maxFITtime(), diffCuts.FITAmpLimits())) {
           return 1;
-        } else
+        } else {
           return 0; // if we arrive here then the event is good!
+        }
       }
     }
   };
