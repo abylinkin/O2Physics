@@ -248,12 +248,12 @@ class SGSelector
         if (!udhelpers::cleanFITA(bc, diffCuts.maxFITtime(), diffCuts.FITAmpLimits())) {
           return 1;
         } else
-          return 0;         // if we arrive here then the event is good!
+          return 0; // if we arrive here then the event is good!
       } else {
         if (!udhelpers::cleanFITC(bc, diffCuts.maxFITtime(), diffCuts.FITAmpLimits())) {
           return 1;
         } else
-          return 0;  // if we arrive here then the event is good!
+          return 0; // if we arrive here then the event is good!
       }
     }
   };
