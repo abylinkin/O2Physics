@@ -10,7 +10,7 @@ using namespace o2::framework::expressions;
 
 struct SGCandProducer {
   // get an SGCutparHolder
-  SGCutParHolder sameCuts = SGCutParHolder();//SGCutparHolder
+  SGCutParHolder sameCuts = SGCutParHolder(); // SGCutparHolder
   Configurable<SGCutParHolder> SGCuts{"SGCuts", {}, "SG event cuts"};
 
   // SG selector
@@ -33,8 +33,8 @@ struct SGCandProducer {
 
   // initialize histogram registry
   HistogramRegistry registry{
-      "registry",
-      {}};
+    "registry",
+    {}};
 
   // data inputs
   using CCs = soa::Join<aod::Collisions, aod::EvSels>;
@@ -143,17 +143,20 @@ struct SGCandProducer {
     LOGF(debug, "<SGCandProducer>  Size of bcRange %d", bcRange.size());
 
     // apply SG selection
-//    auto isSGEvent = sgSelector.IsSelected(sameCuts, collision, bcRange, tracks, fwdtracks);
+    //    auto isSGEvent = sgSelector.IsSelected(sameCuts, collision, bcRange, tracks, fwdtracks);
     auto isSGEventA = sgSelector.IsSelected(sameCuts, collision, bcRange, tracks, fwdtracks, true /* useSideA */);
 
-        // Check if it's a SingleGap event for sideC
+    // Check if it's a SingleGap event for sideC
     auto isSGEventC = sgSelector.IsSelected(sameCuts, collision, bcRange, tracks, fwdtracks, false /* useSideC */);
     // save SG candidates
     auto isSGEvent = (isSGEventA && isSGEventC);
     uint8_t gapSide = -1;
-    if (!isSGEventA && !isSGEventC) gapSide =2;
-    else if (!isSGEventA) gapSide =0;
-    else if (!isSGEventC) gapSide =1;
+    if (!isSGEventA && !isSGEventC)
+      gapSide = 2;
+    else if (!isSGEventA)
+      gapSide = 0;
+    else if (!isSGEventC)
+      gapSide = 1;
     registry.get<TH1>(HIST("reco/Stat"))->Fill(0., 1.);
     registry.get<TH1>(HIST("reco/Stat"))->Fill(isSGEvent + 1, 1.);
     if (isSGEvent == 0) {
