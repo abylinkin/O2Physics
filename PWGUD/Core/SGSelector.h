@@ -46,10 +46,10 @@ class SGSelector
     bool gC;
     for (auto const& bc : bcRange) {
       if (udhelpers::cleanFITA(bc, diffCuts.maxFITtime(), diffCuts.FITAmpLimits())) {
-         gA = true;
+        gA = true;
       }
       if (udhelpers::cleanFITA(bc, diffCuts.maxFITtime(), diffCuts.FITAmpLimits())) {
-         gC = true;
+        gC = true;
       }
     }
     if (!gA && !gC)
@@ -145,11 +145,11 @@ class SGSelector
     }
     // Single Gap (SG) condition
     if (gA && gC) {
-    return 2;
-    } else if (gA){
-	    return 0;
+      return 2;
+    } else if (gA) {
+      return 0;
     } else if (gC) {
-	    return 1;
+      return 1;
     }
   };
 
@@ -163,10 +163,10 @@ class SGSelector
     bool gC;
     for (auto const& bc : bcRange) {
       if (udhelpers::cleanFITA(bc, diffCuts.maxFITtime(), diffCuts.FITAmpLimits())) {
-         gA = true;
+        gA = true;
       }
       if (udhelpers::cleanFITA(bc, diffCuts.maxFITtime(), diffCuts.FITAmpLimits())) {
-         gC = true;
+        gC = true;
       }
     }
     if (!gA && !gC)
@@ -235,11 +235,11 @@ class SGSelector
     // check that there are no FIT signals in any of the compatible BCs
     // Single Gap (SG) condition
     if (gA && gC) {
-    return 2;
-    } else if (gA){
-	    return 0;
+      return 2;
+    } else if (gA) {
+      return 0;
     } else if (gC) {
-	    return 1;
+      return 1;
     }
   };
 
