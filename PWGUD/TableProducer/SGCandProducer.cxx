@@ -58,9 +58,9 @@ struct SGCandProducer {
                         aod::TOFSignal, aod::pidTOFbeta,
                         aod::pidTOFFullEl, aod::pidTOFFullMu, aod::pidTOFFullPi, aod::pidTOFFullKa, aod::pidTOFFullPr>;
   using FWs = aod::FwdTracks;
-//  using FT0 = aod::FT0s;
-//  using FV0A = aod::FV0As;
-//  using FDD = aod::FDDs;
+  //  using FT0 = aod::FT0s;
+  //  using FV0A = aod::FV0As;
+  //  using FDD = aod::FDDs;
 
   // function to update UDFwdTracks, UDFwdTracksExtra
   template <typename TFwdTrack>
@@ -169,30 +169,30 @@ struct SGCandProducer {
 
       // fill FITInfo
       for (auto const& bc : bcRange) {
-      upchelpers::FITInfo fitInfo{};
-//      udhelpers::getFITRangeinfo(fitInfo, bc, ft0s, fv0as, fdds);
-//      LOGF(info, "FitInfo init: %f", fitInfo.ampFDDC);
-      udhelpers::getFITinfo(fitInfo, bc.globalBC(), bcs, ft0s, fv0as, fdds);
-//      LOGF(info, "FitInfo: %f", fitInfo.ampFDDC);
-//      udhelpers::getFITinfo(fitInfo, bcRange, bcs, ft0s, fv0as, fdds);
+        upchelpers::FITInfo fitInfo{};
+        //      udhelpers::getFITRangeinfo(fitInfo, bc, ft0s, fv0as, fdds);
+        //      LOGF(info, "FitInfo init: %f", fitInfo.ampFDDC);
+        udhelpers::getFITinfo(fitInfo, bc.globalBC(), bcs, ft0s, fv0as, fdds);
+        //      LOGF(info, "FitInfo: %f", fitInfo.ampFDDC);
+        //      udhelpers::getFITinfo(fitInfo, bcRange, bcs, ft0s, fv0as, fdds);
 
-      // update SG candidates tables
-      auto rtrwTOF = udhelpers::rPVtrwTOF<true>(tracks, collision.numContrib());
-      outputCollisions(bc.globalBC(), bc.runNumber(),
-                       collision.posX(), collision.posY(), collision.posZ(),
-                       collision.numContrib(), udhelpers::netCharge<true>(tracks),
-                       rtrwTOF);
-      outputSGCollisions(isSGEvent);
-      LOGF(info, "FIT: %f \t %f \t %f \t %f \t %f", fitInfo.ampFT0A, fitInfo.ampFT0C, fitInfo.ampFDDA, fitInfo.ampFDDC, fitInfo.ampFV0A);
-      outputCollisionsSels(fitInfo.ampFT0A, fitInfo.ampFT0C, fitInfo.timeFT0A, fitInfo.timeFT0C,
-                           fitInfo.triggerMaskFT0,
-                           fitInfo.ampFDDA, fitInfo.ampFDDC, fitInfo.timeFDDA, fitInfo.timeFDDC,
-                           fitInfo.triggerMaskFDD,
-                           fitInfo.ampFV0A, fitInfo.timeFV0A, fitInfo.triggerMaskFV0A,
-                           fitInfo.BBFT0Apf, fitInfo.BBFT0Cpf, fitInfo.BGFT0Apf, fitInfo.BGFT0Cpf,
-                           fitInfo.BBFV0Apf, fitInfo.BGFV0Apf,
-                           fitInfo.BBFDDApf, fitInfo.BBFDDCpf, fitInfo.BGFDDApf, fitInfo.BGFDDCpf);
-      outputCollsLabels(collision.globalIndex());
+        // update SG candidates tables
+        auto rtrwTOF = udhelpers::rPVtrwTOF<true>(tracks, collision.numContrib());
+        outputCollisions(bc.globalBC(), bc.runNumber(),
+                         collision.posX(), collision.posY(), collision.posZ(),
+                         collision.numContrib(), udhelpers::netCharge<true>(tracks),
+                         rtrwTOF);
+        outputSGCollisions(isSGEvent);
+        LOGF(info, "FIT: %f \t %f \t %f \t %f \t %f", fitInfo.ampFT0A, fitInfo.ampFT0C, fitInfo.ampFDDA, fitInfo.ampFDDC, fitInfo.ampFV0A);
+        outputCollisionsSels(fitInfo.ampFT0A, fitInfo.ampFT0C, fitInfo.timeFT0A, fitInfo.timeFT0C,
+                             fitInfo.triggerMaskFT0,
+                             fitInfo.ampFDDA, fitInfo.ampFDDC, fitInfo.timeFDDA, fitInfo.timeFDDC,
+                             fitInfo.triggerMaskFDD,
+                             fitInfo.ampFV0A, fitInfo.timeFV0A, fitInfo.triggerMaskFV0A,
+                             fitInfo.BBFT0Apf, fitInfo.BBFT0Cpf, fitInfo.BGFT0Apf, fitInfo.BGFT0Cpf,
+                             fitInfo.BBFV0Apf, fitInfo.BGFV0Apf,
+                             fitInfo.BBFDDApf, fitInfo.BBFDDCpf, fitInfo.BGFDDApf, fitInfo.BGFDDCpf);
+        outputCollsLabels(collision.globalIndex());
       }
       // update SGTracks tables
       for (auto& track : tracks) {
