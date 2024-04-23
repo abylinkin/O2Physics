@@ -16,6 +16,7 @@
 /// \author Rik Spijkers <r.spijkers@students.uu.nl>, Utrecht University
 /// \author Luca Micheletti <luca.micheletti@to.infn.it>, INFN
 
+#include "CommonConstants/PhysicsConstants.h"
 #include "Framework/AnalysisTask.h"
 #include "Framework/runDataProcessing.h"
 
@@ -57,7 +58,7 @@ struct HfCandidateSelectorXToJpsiPiPi {
   /// \param track is daughter track
   /// \return true if track is good
   template <typename T>
-  bool daughterSelection(const T& track)
+  bool daughterSelection(const T& /*track*/)
   {
     return true;
   }
@@ -83,7 +84,7 @@ struct HfCandidateSelectorXToJpsiPiPi {
       return false; // check that the candidate pT is within the analysis range
     }
 
-    if (std::abs(hfHelper.invMassXToJpsiPiPi(hfCandX) - o2::analysis::pdg::MassX3872) > cuts->get(pTBin, "m")) {
+    if (std::abs(hfHelper.invMassXToJpsiPiPi(hfCandX) - o2::constants::physics::MassX3872) > cuts->get(pTBin, "m")) {
       // LOGF(debug, "X topol selection failed at mass diff check");
       return false; // check that mass difference is within bounds
     }
@@ -191,7 +192,7 @@ struct HfCandidateSelectorXToJpsiPiPi {
 
   void process(aod::HfCandX const& hfCandXs,
                aod::HfCand2Prong const&,
-               TracksSel const& tracks)
+               TracksSel const&)
   {
     for (const auto& hfCandX : hfCandXs) { // looping over X candidates
       // note the difference between Jpsi (index0) and pions (index1,2)

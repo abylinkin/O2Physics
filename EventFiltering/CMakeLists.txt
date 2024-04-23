@@ -42,8 +42,8 @@ o2physics_add_dpl_workflow(hf-filter
     PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore ONNXRuntime::ONNXRuntime O2Physics::HFFilterHelpers O2::DetectorsBase
     COMPONENT_NAME Analysis)
 
-o2physics_add_dpl_workflow(hf-filter-qc
-    SOURCES PWGHF/HFFilterQC.cxx
+o2physics_add_dpl_workflow(hf-filter-charm-hadron-signals
+    SOURCES PWGHF/HFFilterCharmHadronSignals.cxx
     PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore ONNXRuntime::ONNXRuntime O2Physics::HFFilterHelpers
     COMPONENT_NAME Analysis)
 
@@ -67,6 +67,11 @@ o2physics_add_dpl_workflow(je-filter
     PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore O2Physics::PWGJECore FastJet::FastJet FastJet::Contrib
     COMPONENT_NAME Analysis)
 
+o2physics_add_dpl_workflow(je-hf-filter
+    SOURCES PWGJE/jetHFFilter.cxx
+    PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore O2Physics::PWGJECore FastJet::FastJet FastJet::Contrib
+    COMPONENT_NAME Analysis)
+
 o2physics_add_dpl_workflow(fje-filter
     SOURCES PWGJE/fullJetFilter.cxx
     PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore O2Physics::PWGJECore FastJet::FastJet FastJet::Contrib Boost::system
@@ -82,9 +87,14 @@ o2physics_add_dpl_workflow(mult-filter
     PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore
     COMPONENT_NAME Analysis)
 
-o2physics_add_dpl_workflow(em-filter
-    SOURCES PWGEM/photonFilter.cxx
-    PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore O2::DetectorsBase
+o2physics_add_dpl_workflow(em-photon-filter
+    SOURCES PWGEM/EMPhotonFilter.cxx
+    PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore O2::DetectorsBase O2Physics::PWGEMPhotonMesonCore
+    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(em-photon-filter-qc
+    SOURCES PWGEM/EMPhotonFilterQC.cxx
+    PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore O2::DetectorsBase O2Physics::PWGEMPhotonMesonCore
     COMPONENT_NAME Analysis)
 
 o2physics_add_dpl_workflow(lf-f1proton-filter

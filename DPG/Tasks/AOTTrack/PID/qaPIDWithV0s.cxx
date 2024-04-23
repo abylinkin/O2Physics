@@ -122,9 +122,9 @@ struct pidQaWithV0s {
   }
 
   template <typename T1, typename C>
-  bool acceptV0s(const T1& v0, const C& collision) // Apply general selections on V0
+  bool acceptV0s(const T1& v0, const C& /*collision*/) // Apply general selections on V0
   {
-    float cospa = v0.v0cosPA(collision.posX(), collision.posY(), collision.posZ());
+    float cospa = v0.v0cosPA();
     fillHistogram("beforeselections/cospa", cospa);
     fillHistogram("beforeselections/decayradius", v0.v0radius());
     if (cospa < v0cospa) {
@@ -139,7 +139,7 @@ struct pidQaWithV0s {
   }
 
   template <typename T1, typename T2, typename C>
-  bool acceptK0s(const T1& v0, const T2& ntrack, const T2& ptrack, const C& collision) // Apply selection for K0s
+  bool acceptK0s(const T1& v0, const T2& ntrack, const T2& ptrack, const C& /*collision*/) // Apply selection for K0s
   {
     if (TMath::Abs(v0.yK0Short()) > rapidity) {
       return false;
@@ -154,7 +154,7 @@ struct pidQaWithV0s {
   }
 
   template <typename T1, typename T2, typename C>
-  bool acceptLambda(const T1& v0, const T2& ntrack, const T2& ptrack, const C& collision) // Apply selection for Lambdas
+  bool acceptLambda(const T1& v0, const T2& ntrack, const T2& ptrack, const C& /*collision*/) // Apply selection for Lambdas
   {
     if (TMath::Abs(v0.yLambda()) > rapidity) {
       return false;

@@ -44,7 +44,7 @@
 #include "Common/DataModel/TrackSelectionTables.h"
 #include "Common/DataModel/EventSelection.h"
 #include "Common/Core/trackUtilities.h"
-#include "PWGHF/Core/PDG.h"
+#include "CommonConstants/PhysicsConstants.h"
 #include "Common/Core/TrackSelection.h"
 #include "Framework/ASoAHelpers.h"
 
@@ -124,8 +124,8 @@ struct resonanceqa {
       histos.add("h1LambdastarRec", "Lambdastar meson Rec", kTH1F, {{100, 0.0f, 10.0f}});
     }
   }
-  double massPi = o2::analysis::pdg::MassPiPlus;
-  double massKa = o2::analysis::pdg::MassKPlus;
+  double massPi = o2::constants::physics::MassPiPlus;
+  double massKa = o2::constants::physics::MassKPlus;
   double massPr = 0.938272088f;
   double rapidity;
   double genMass, recMass, resolution;
@@ -258,12 +258,12 @@ struct resonanceqa {
   Filter collisionFilter = nabs(aod::collision::posZ) < cfgCutVertex;
   Filter acceptanceFilter = (nabs(aod::track::eta) < cfgCutEta && nabs(aod::track::pt) > cfgCutPT);
   Filter DCAcutFilter = (nabs(aod::track::dcaXY) < cfgCutDCAxy) && (nabs(aod::track::dcaZ) < cfgCutDCAz);
-  using EventCandidates = soa::Filtered<soa::Join<aod::Collisions, aod::EvSels, aod::Mults>>;
+  using EventCandidates = soa::Filtered<soa::Join<aod::Collisions, aod::EvSels, aod::TPCMults>>;
   using TrackCandidates = soa::Filtered<soa::Join<aod::Tracks, aod::TracksExtra, aod::TracksDCA, aod::TrackSelection,
                                                   aod::pidTPCFullPi, aod::pidTOFFullPi,
                                                   aod::pidTPCFullKa, aod::pidTOFFullKa,
                                                   aod::pidTPCFullPr, aod::pidTOFFullPr>>;
-  using EventCandidatesMC = soa::Join<aod::Collisions, aod::Mults, aod::McCollisionLabels>;
+  using EventCandidatesMC = soa::Join<aod::Collisions, aod::TPCMults, aod::McCollisionLabels>;
   using TrackCandidatesMC = soa::Filtered<soa::Join<aod::Tracks, aod::TracksExtra, aod::TracksDCA, aod::TrackSelection,
                                                     aod::pidTPCFullPi, aod::pidTOFFullPi,
                                                     aod::pidTPCFullKa, aod::pidTOFFullKa,
@@ -330,7 +330,7 @@ struct resonanceqa {
     }
   }
   PROCESS_SWITCH(resonanceqa, processSameEvent, "Process Same event", false);
-  void processMixedEvent(EventCandidates const& collisions, TrackCandidates const& tracks)
+  void processMixedEvent(EventCandidates const&, TrackCandidates const&)
   {
     for (auto& [c1, tracks1, c2, tracks2] : pair) {
       if (!c1.sel8()) {
@@ -427,7 +427,7 @@ struct resonanceqa {
     }
   }
   PROCESS_SWITCH(resonanceqa, processGen, "Process Generated", false);
-  void processRec(EventCandidatesMC::iterator const& collision, TrackCandidatesMC const& tracks, aod::McParticles const& mcParticles, aod::McCollisions const& mcCollisions)
+  void processRec(EventCandidatesMC::iterator const& collision, TrackCandidatesMC const& tracks, aod::McParticles const&, aod::McCollisions const&)
   {
     if (std::abs(collision.mcCollision().posZ()) > cfgCutVertex) {
       return;

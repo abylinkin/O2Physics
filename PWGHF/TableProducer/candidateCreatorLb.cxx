@@ -15,6 +15,7 @@
 ///
 /// \author Panos Christakoglou <panos.christakoglou@cern.ch>, Nikhef
 
+#include "CommonConstants/PhysicsConstants.h"
 #include "DCAFitter/DCAFitterN.h"
 #include "Framework/AnalysisTask.h"
 #include "ReconstructionDataFormats/DCA.h"
@@ -25,12 +26,15 @@
 #include "PWGHF/Core/HfHelper.h"
 #include "PWGHF/DataModel/CandidateReconstructionTables.h"
 #include "PWGHF/DataModel/CandidateSelectionTables.h"
+#include "PWGHF/Utils/utilsTrkCandHf.h"
 
 using namespace o2;
 using namespace o2::analysis;
 using namespace o2::aod;
+using namespace o2::constants::physics;
 using namespace o2::framework;
 using namespace o2::framework::expressions;
+using namespace o2::hf_trkcandsel;
 
 void customize(std::vector<o2::framework::ConfigParamSpec>& workflowOptions)
 {
@@ -58,6 +62,8 @@ struct HfCandidateCreatorLb {
   Configurable<int> selectionFlagLc{"selectionFlagLc", 1, "Selection Flag for Lc"};
   Configurable<double> yCandMax{"yCandMax", -1., "max. cand. rapidity"};
 
+  o2::vertexing::DCAFitterN<2> df2; // 2-prong vertex fitter
+  o2::vertexing::DCAFitterN<3> df3; // 3-prong vertex fitter (to rebuild Lc vertex)
   HfHelper hfHelper;
 
   double massPi{0.};
@@ -74,20 +80,14 @@ struct HfCandidateCreatorLb {
   OutputObj<TH1F> hCovPVXX{TH1F("hCovPVXX", "2-prong candidates;XX element of cov. matrix of prim. vtx. position (cm^{2});entries", 100, 0., 1.e-4)};
   OutputObj<TH1F> hCovSVXX{TH1F("hCovSVXX", "2-prong candidates;XX element of cov. matrix of sec. vtx. position (cm^{2});entries", 100, 0., 0.2)};
 
+  std::shared_ptr<TH1> hCandidatesLc, hCandidatesLb;
+  HistogramRegistry registry{"registry"};
+
   void init(InitContext const&)
   {
-    massPi = o2::analysis::pdg::MassPiMinus;
-    massLc = o2::analysis::pdg::MassLambdaCPlus;
-  }
+    massPi = MassPiMinus;
+    massLc = MassLambdaCPlus;
 
-  void process(aod::Collision const& collision,
-               soa::Filtered<soa::Join<
-                 aod::HfCand3Prong,
-                 aod::HfSelLc>> const& lcCands,
-               aod::TracksWCov const& tracks)
-  {
-    // 2-prong vertex fitter
-    o2::vertexing::DCAFitterN<2> df2;
     df2.setBz(bz);
     df2.setPropagateToPCA(propagateToPCA);
     df2.setMaxR(maxR);
@@ -97,8 +97,6 @@ struct HfCandidateCreatorLb {
     df2.setUseAbsDCA(useAbsDCA);
     df2.setWeightedFinalPCA(useWeightedFinalPCA);
 
-    // 3-prong vertex fitter (to rebuild Lc vertex)
-    o2::vertexing::DCAFitterN<3> df3;
     df3.setBz(bz);
     df3.setPropagateToPCA(propagateToPCA);
     df3.setMaxR(maxR);
@@ -108,6 +106,19 @@ struct HfCandidateCreatorLb {
     df3.setUseAbsDCA(useAbsDCA);
     df3.setWeightedFinalPCA(useWeightedFinalPCA);
 
+    /// candidate monitoring
+    hCandidatesLc = registry.add<TH1>("hCandidatesLc", "Lc candidate counter", {HistType::kTH1D, {axisCands}});
+    hCandidatesLb = registry.add<TH1>("hCandidatesLb", "B candidate counter", {HistType::kTH1D, {axisCands}});
+    setLabelHistoCands(hCandidatesLc);
+    setLabelHistoCands(hCandidatesLb);
+  }
+
+  void process(aod::Collision const&,
+               soa::Filtered<soa::Join<
+                 aod::HfCand3Prong,
+                 aod::HfSelLc>> const& lcCands,
+               aod::TracksWCov const& tracks)
+  {
     // loop over Lc candidates
     for (const auto& lcCand : lcCands) {
       if (!(lcCand.hfflag() & 1 << o2::aod::hf_cand_3prong::DecayType::LcToPKPi)) {
@@ -131,16 +142,25 @@ struct HfCandidateCreatorLb {
       auto collision = track0.collision();
 
       // reconstruct the 3-prong secondary vertex
-      if (df3.process(trackParVar0, trackParVar1, trackParVar2) == 0) {
+      hCandidatesLc->Fill(SVFitting::BeforeFit);
+      try {
+        if (df3.process(trackParVar0, trackParVar1, trackParVar2) == 0) {
+          continue;
+        }
+      } catch (const std::runtime_error& error) {
+        LOG(info) << "Run time error found: " << error.what() << ". DCFitterN cannot work, skipping the candidate.";
+        hCandidatesLc->Fill(SVFitting::Fail);
         continue;
       }
+      hCandidatesLc->Fill(SVFitting::FitOk);
+
       const auto& secondaryVertex = df3.getPCACandidate();
       trackParVar0.propagateTo(secondaryVertex[0], bz);
       trackParVar1.propagateTo(secondaryVertex[0], bz);
       trackParVar2.propagateTo(secondaryVertex[0], bz);
 
-      std::array<float, 3> pvecpK = {track0.px() + track1.px(), track0.py() + track1.py(), track0.pz() + track1.pz()};
-      std::array<float, 3> pvecLc = {pvecpK[0] + track2.px(), pvecpK[1] + track2.py(), pvecpK[2] + track2.pz()};
+      std::array<float, 3> pvecpK = RecoDecay::pVec(track0.pVector(), track1.pVector());
+      std::array<float, 3> pvecLc = RecoDecay::pVec(pvecpK, track2.pVector());
       auto trackpK = o2::dataformats::V0(df3.getPCACandidatePos(), pvecpK, df3.calcPCACovMatrixFlat(), trackParVar0, trackParVar1);
       auto trackLc = o2::dataformats::V0(df3.getPCACandidatePos(), pvecLc, df3.calcPCACovMatrixFlat(), trackpK, trackParVar2);
 
@@ -164,9 +184,17 @@ struct HfCandidateCreatorLb {
         auto trackParVarPi = getTrackParCov(trackPion);
 
         // reconstruct the 3-prong Lc vertex
-        if (df2.process(trackLc, trackParVarPi) == 0) {
+        hCandidatesLb->Fill(SVFitting::BeforeFit);
+        try {
+          if (df2.process(trackLc, trackParVarPi) == 0) {
+            continue;
+          }
+        } catch (const std::runtime_error& error) {
+          LOG(info) << "Run time error found: " << error.what() << ". DCFitterN cannot work, skipping the candidate.";
+          hCandidatesLb->Fill(SVFitting::Fail);
           continue;
         }
+        hCandidatesLb->Fill(SVFitting::FitOk);
 
         // calculate relevant properties
         const auto& secondaryVertexLb = df2.getPCACandidate();
@@ -236,7 +264,7 @@ struct HfCandidateCreatorLbMc {
 
   void process(aod::HfCandLb const& candidates,
                aod::HfCand3Prong const&,
-               aod::TracksWMc const& tracks,
+               aod::TracksWMc const&,
                aod::McParticles const& mcParticles)
   {
     int indexRec = -1;
@@ -259,10 +287,10 @@ struct HfCandidateCreatorLbMc {
                                          lcCand.prong1_as<aod::TracksWMc>(),
                                          lcCand.prong2_as<aod::TracksWMc>()};
       // Λb → Λc+ π-
-      indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughters, pdg::Code::kLambdaB0, std::array{+kProton, -kKPlus, +kPiPlus, -kPiPlus}, true, &sign, 2);
+      indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughters, Pdg::kLambdaB0, std::array{+kProton, -kKPlus, +kPiPlus, -kPiPlus}, true, &sign, 2);
       if (indexRec > -1) {
         // Λb → Λc+ π-
-        indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughtersLc, pdg::Code::kLambdaCPlus, std::array{+kProton, -kKPlus, +kPiPlus}, true, &sign, 1);
+        indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughtersLc, Pdg::kLambdaCPlus, std::array{+kProton, -kKPlus, +kPiPlus}, true, &sign, 1);
         if (indexRec > -1) {
           flag = 1 << hf_cand_lb::DecayType::LbToLcPi;
         } else {
@@ -278,10 +306,10 @@ struct HfCandidateCreatorLbMc {
       flag = 0;
       origin = 0;
       // Λb → Λc+ π-
-      if (RecoDecay::isMatchedMCGen(mcParticles, particle, pdg::Code::kLambdaB0, std::array{static_cast<int>(pdg::Code::kLambdaCPlus), -kPiPlus}, true)) {
+      if (RecoDecay::isMatchedMCGen(mcParticles, particle, Pdg::kLambdaB0, std::array{static_cast<int>(Pdg::kLambdaCPlus), -kPiPlus}, true)) {
         // Λc+ → p K- π+
         auto LcCandMC = mcParticles.rawIteratorAt(particle.daughtersIds().front());
-        if (RecoDecay::isMatchedMCGen(mcParticles, LcCandMC, static_cast<int>(pdg::Code::kLambdaCPlus), std::array{+kProton, -kKPlus, +kPiPlus}, true, &sign)) {
+        if (RecoDecay::isMatchedMCGen(mcParticles, LcCandMC, static_cast<int>(Pdg::kLambdaCPlus), std::array{+kProton, -kKPlus, +kPiPlus}, true, &sign)) {
           flag = sign * (1 << hf_cand_lb::DecayType::LbToLcPi);
         }
       }

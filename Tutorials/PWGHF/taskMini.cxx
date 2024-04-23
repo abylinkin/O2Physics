@@ -15,6 +15,7 @@
 /// \author Vít Kučera <vit.kucera@cern.ch>, Inha University
 
 // O2
+#include "CommonConstants/PhysicsConstants.h"
 #include "DCAFitter/DCAFitterN.h"
 #include "Framework/AnalysisDataModel.h"
 #include "Framework/AnalysisTask.h"
@@ -109,8 +110,8 @@ struct HfCandidateCreator2Prong {
       // fill histograms
       // calculate invariant masses
       auto arrayMomenta = std::array{pVec0, pVec1};
-      massPiK = RecoDecay::m(arrayMomenta, std::array{o2::analysis::pdg::MassPiPlus, o2::analysis::pdg::MassKPlus});
-      massKPi = RecoDecay::m(arrayMomenta, std::array{o2::analysis::pdg::MassKPlus, o2::analysis::pdg::MassPiPlus});
+      massPiK = RecoDecay::m(arrayMomenta, std::array{o2::constants::physics::MassPiPlus, o2::constants::physics::MassKPlus});
+      massKPi = RecoDecay::m(arrayMomenta, std::array{o2::constants::physics::MassKPlus, o2::constants::physics::MassPiPlus});
       hMass->Fill(massPiK);
       // hMass->Fill(massKPi);
     }
@@ -179,15 +180,15 @@ struct HfCandidateSelectorD0 {
   /// \note trackPion = positive and trackKaon = negative for D0 selection and inverse for D0bar
   /// \return true if candidate passes all cuts for the given conjugate
   template <typename T1, typename T2>
-  bool selectionTopolConjugate(const T1& candidate, const T2& trackPion, const T2& trackKaon)
+  bool selectionTopolConjugate(const T1& candidate, const T2& trackPion, const T2& /*trackKaon*/)
   {
     // invariant-mass cut
     if (trackPion.sign() > 0) {
-      if (std::abs(hfHelper.invMassD0ToPiK(candidate) - o2::analysis::pdg::MassD0) > massWindow) {
+      if (std::abs(hfHelper.invMassD0ToPiK(candidate) - o2::constants::physics::MassD0) > massWindow) {
         return false;
       }
     } else {
-      if (std::abs(hfHelper.invMassD0barToKPi(candidate) - o2::analysis::pdg::MassD0) > massWindow) {
+      if (std::abs(hfHelper.invMassD0barToKPi(candidate) - o2::constants::physics::MassD0) > massWindow) {
         return false;
       }
     }
@@ -294,7 +295,7 @@ struct HfTaskD0 {
     registry.add("hCpaVsPtCand", strTitle + ";" + "cosine of pointing angle" + ";" + strPt + ";" + strEntries, {HistType::kTH2F, {{110, -1.1, 1.1}, {100, 0., 10.}}});
   }
 
-  void process(soa::Join<aod::HfCandProng2, aod::HfSelCandidateD0> const& candidates)
+  void process(soa::Join<aod::HfCandProng2, aod::HfSelCandidateD0> const& /*candidates*/)
   {
     for (const auto& candidate : selectedD0Candidates) {
       if (candidate.isSelD0() >= selectionFlagD0) {

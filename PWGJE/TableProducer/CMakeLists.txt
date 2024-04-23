@@ -11,38 +11,49 @@
 
 
 if(FastJet_FOUND)
-o2physics_add_dpl_workflow(jet-finder
-                    SOURCES jetfinder.cxx
+
+o2physics_add_dpl_workflow(jet-deriveddata-producer
+                    SOURCES jetderiveddataproducer.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
 
-o2physics_add_dpl_workflow(jet-finder-d0-data-charged
-                    SOURCES jetfinderD0DataCharged.cxx
-                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore O2::FrameworkPhysicsSupport
-                    COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(jet-finder-d0-mcd-charged
-                    SOURCES jetfinderD0MCDCharged.cxx
-                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore O2::FrameworkPhysicsSupport
-                    COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(jet-finder-d0-mcp-charged
-                    SOURCES jetfinderD0MCPCharged.cxx
-                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore O2::FrameworkPhysicsSupport
-                    COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(jet-finder-lc-data-charged
-                    SOURCES jetfinderLcDataCharged.cxx
-                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore O2::FrameworkPhysicsSupport
-                    COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(jet-skimmer
-                    SOURCES jetskimming.cxx
+o2physics_add_dpl_workflow(jet-deriveddata-trigger-producer
+                    SOURCES jetderiveddatatriggerproducer.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
 
-o2physics_add_dpl_workflow(jet-matching
-                    SOURCES jetmatching.cxx
+o2physics_add_dpl_workflow(jet-deriveddata-producer-dummy
+                    SOURCES jetderiveddataproducerdummy.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(jet-deriveddata-producer-dummy-d0
+                    SOURCES jetderiveddataproducerdummyd0.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(jet-deriveddata-producer-dummy-lc
+                    SOURCES jetderiveddataproducerdummylc.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(jet-deriveddata-writer
+                    SOURCES jetderiveddatawriter.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(jet-matching-mc
+                    SOURCES jetmatchingmc.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(jet-matching-sub
+                    SOURCES jetmatchingsub.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(jet-matching-mc-sub
+                    SOURCES jetmatchingmcsub.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
 
@@ -65,10 +76,25 @@ o2physics_add_dpl_workflow(jet-taggerhf
                     SOURCES jettaggerhf.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(estimator-rho
+                    SOURCES rhoEstimator.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(subtractor-eventwiseconstituent
+                    SOURCES eventwiseConstituentSubtractor.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::PWGJECore O2Physics::AnalysisCore
+                    COMPONENT_NAME Analysis)
 endif()
 
 
 o2physics_add_dpl_workflow(emcal-correction-task
                     SOURCES emcalCorrectionTask.cxx
+                    PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2::DetectorsBase O2::EMCALBase O2::EMCALReconstruction
+                    COMPONENT_NAME Analysis)
+
+o2physics_add_dpl_workflow(emcal-matchedtracks-writer
+                    SOURCES emcalMatchedTracksTask.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2::DetectorsBase O2::EMCALBase O2::EMCALReconstruction
                     COMPONENT_NAME Analysis)
