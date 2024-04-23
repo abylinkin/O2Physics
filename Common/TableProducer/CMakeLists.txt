@@ -9,6 +9,7 @@
 # granted to it by virtue of its status as an Intergovernmental Organization
 # or submit itself to any jurisdiction.
 
+add_subdirectory(Converters)
 add_subdirectory(PID)
 
 o2physics_add_dpl_workflow(trackextension
@@ -66,31 +67,6 @@ o2physics_add_dpl_workflow(track-propagation-tester
                     PUBLIC_LINK_LIBRARIES O2::DetectorsBase O2Physics::AnalysisCore O2Physics::trackSelectionRequest
                     COMPONENT_NAME Analysis)
 
-o2physics_add_dpl_workflow(mc-converter
-                    SOURCES mcConverter.cxx
-                    PUBLIC_LINK_LIBRARIES
-                    COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(tracks-extra-converter
-                    SOURCES tracksExtraConverter.cxx
-                    PUBLIC_LINK_LIBRARIES
-                    COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(fdd-converter
-                    SOURCES fddConverter.cxx
-                    PUBLIC_LINK_LIBRARIES
-                COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(collision-converter
-                    SOURCES collisionConverter.cxx
-                    PUBLIC_LINK_LIBRARIES
-                COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(bc-converter
-                    SOURCES bcConverter.cxx
-                    PUBLIC_LINK_LIBRARIES O2::Framework
-                COMPONENT_NAME Analysis)
-
 o2physics_add_dpl_workflow(calo-clusters
                     SOURCES caloClusterProducer.cxx
                     PUBLIC_LINK_LIBRARIES O2::DataFormatsPHOS O2::PHOSBase O2::PHOSReconstruction O2Physics::DataModel
@@ -109,21 +85,6 @@ o2physics_add_dpl_workflow(track-to-collision-associator
                     PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore
                     COMPONENT_NAME Analysis)
 
-o2physics_add_dpl_workflow(calo-label-converter
-                    SOURCES caloLabelConverter.cxx
-                    PUBLIC_LINK_LIBRARIES
-                COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(zdc-converter
-                    SOURCES zdcConverter.cxx
-                    PUBLIC_LINK_LIBRARIES
-                    COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(hmpid-converter
-                    SOURCES hmpConverter.cxx
-                    PUBLIC_LINK_LIBRARIES
-                    COMPONENT_NAME Analysis)
-
 o2physics_add_dpl_workflow(fwdtrack-to-collision-associator
                     SOURCES fwdtrackToCollisionAssociator.cxx
                     PUBLIC_LINK_LIBRARIES O2Physics::AnalysisCore
@@ -136,15 +97,6 @@ o2physics_add_dpl_workflow(mccollisionextra
 
 o2physics_add_dpl_workflow(qvector-table
                     SOURCES qVectorsTable.cxx
-                    PUBLIC_LINK_LIBRARIES O2::Framework
-                                          O2Physics::AnalysisCore
-                                          O2::DetectorsCommonDataFormats
-                                          O2Physics::DataModel
-                                          O2::CCDB
-                    COMPONENT_NAME Analysis)
-
-o2physics_add_dpl_workflow(evtplane-table
-                    SOURCES evtPlanesTable.cxx
                     PUBLIC_LINK_LIBRARIES O2::Framework
                                           O2Physics::AnalysisCore
                                           O2::DetectorsCommonDataFormats

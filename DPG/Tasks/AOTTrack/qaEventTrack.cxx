@@ -17,6 +17,7 @@
 /// \author Mario Krüger <mario.kruger@cern.ch>
 /// \author Nicolò Jacazio <nicolo.jacazio@cern.ch>, CERN
 /// \author Mattia Faggin <mattia.faggin@cern.ch>, University and INFN, Padova, Italy
+/// \author Roman Lavicka <roman.lavicka@cern.ch>, Austrian Academy of Sciences, Vienna, Austria
 /// \brief  Task to produce QA objects for the track and the event properties in the AOD.
 ///
 
@@ -53,11 +54,15 @@ struct qaEventTrack {
   SliceCache cache;
 
   // general steering settings
-  Configurable<bool> isRun3{"isRun3", false, "Is Run3 dataset"}; // TODO: derive this from metadata once possible to get rid of the flag
+  Configurable<bool> isRun3{"isRun3", true, "Is Run3 dataset"}; // TODO: derive this from metadata once possible to get rid of the flag
+  Configurable<bool> overwriteAxisRangeForPbPb{"overwriteAxisRangeForPbPb", false, "Global switch to easily set the most relaxed default axis ranges of multiplicity and PVcontribs for PbPb"};
   Configurable<bool> doDebug{"doDebug", false, "Bool to enable debug outputs"};
 
   // options to select specific events
   Configurable<bool> selectGoodEvents{"selectGoodEvents", true, "select good events"};
+
+  // option to apply a timeframe cut
+  Configurable<bool> tfCut{"tfCut", false, "applies timeframe cut"};
 
   // options to select only specific tracks
   Configurable<int> trackSelection{"trackSelection", 1, "Track selection: 0 -> No Cut, 1 -> kGlobalTrack, 2 -> kGlobalTrackWoPtEta, 3 -> kGlobalTrackWoDCA, 4 -> kQualityTracks, 5 -> kInAcceptanceTracks"};
@@ -72,16 +77,23 @@ struct qaEventTrack {
   Configurable<float> minPhi{"minPhi", -1.f, "Minimum phi of accepted tracks"};
   Configurable<float> maxPhi{"maxPhi", 10.f, "Maximum phi of accepted tracks"};
 
+  // option to check PID for tracking before filling resolution histogras
+  Configurable<bool> checkPIDforTracking{"checkPIDforTracking", false, "check for PID in tracking"};
+  Configurable<int> PartIdentifier{"PartIdentifier", 2, "Particle identifier for selected particle; 0: electron, 1: muon, 2: pion, 3: kaon, 4: proton, 5: deuteron, 6: triton, 7: helium3, 8: alpha"};
+  Configurable<bool> doExtraPIDqa{"doExtraPIDqa", false, "do extra QA for tracks with wrong PID in tracking"};
+
   // options to check the track variables only for PV contributors
   Configurable<bool> checkOnlyPVContributor{"checkOnlyPVContributor", false, "check the track variables only for primary vertex contributors"};
 
   // configurable binning of histograms
   ConfigurableAxis binsPt{"binsPt", {VARIABLE_WIDTH, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 2.0, 5.0, 10.0, 20.0, 50.0}, ""};
+  ConfigurableAxis binsInvPt{"binsInvPt", {VARIABLE_WIDTH, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 2.0, 5.0, 10.0, 20.0, 50.0}, ""};
   ConfigurableAxis binsDeltaPt{"binsDeltaPt", {100, -0.495, 0.505}, ""};
 
   ConfigurableAxis binsVertexPosZ{"binsVertexPosZ", {100, -20., 20.}, ""}; // TODO: do we need this to be configurable?
   ConfigurableAxis binsVertexPosXY{"binsVertexPosXY", {500, -1., 1.}, ""}; // TODO: do we need this to be configurable?
-  ConfigurableAxis binsTrackMultiplicity{"binsTrackMultiplcity", {5000, 0, 5000}, ""};
+  ConfigurableAxis binsVertexNumContrib{"binsVertexNumContrib", {200, 0, 200}, ""};
+  ConfigurableAxis binsTrackMultiplicity{"binsTrackMultiplicity", {1000, 0, 1000}, ""};
 
   // TODO: ask if one can have different filters for both process functions
   Filter trackFilter = (trackSelection.node() == 0) ||
@@ -129,17 +141,53 @@ struct qaEventTrack {
       LOGF(info, "Mixing process functions for Run 2 and Run 3 data, returning...");
       return;
     }
+
+    //
+    // Next section setups overwrite of configurableAxis if overwriteAxisRangeForPbPb is used.
+    //
+    // Define the robust default axis binning for PbPb here (assumption: axis always starts at 0).
+    int nBinsNumContrib = 1500;
+    double maxBinsNumContrib = 7500.;
+    int nBinsTrackMultiplicity = 2500;
+    double maxBinsTrackMultiplicity = 50000.;
+    // Create and fill vectors of default bin edges for AxisSpec
+    std::vector<double> vecBinsVertexNumContribDefaultPbPb;
+    std::vector<double> vecBinsTrackMultiplicityDefaultPbPb;
+    for (int ibin(0); ibin < nBinsNumContrib + 1; ibin++) {
+      vecBinsVertexNumContribDefaultPbPb.push_back(static_cast<double>(ibin) * (maxBinsNumContrib / nBinsNumContrib));
+    }
+    for (int ibin(0); ibin < nBinsTrackMultiplicity + 1; ibin++) {
+      vecBinsTrackMultiplicityDefaultPbPb.push_back(static_cast<double>(ibin) * (maxBinsTrackMultiplicity / nBinsTrackMultiplicity));
+    }
+    // Convert ConfigurableAxis into vector, so it can be used in if condition with above later on.
+    // Need to use AxisSpec struct as mid-step.
+    // Since ConfigurableAxis has fixed binning, .binEdges copies only first and last bin edge (for variable binning,
+    // it copies all edges), hence the vectors has to be filled the following way.
+    std::vector<double> vecBinsVertexNumContrib;
+    std::vector<double> vecBinsTrackMultiplicity;
+    const AxisSpec tempAxisVertexNumContrib{binsVertexNumContrib, "Number Of contributors to the PV"};
+    const AxisSpec tempAxisTrackMultiplicity{binsTrackMultiplicity, "Track Multiplicity"};
+    std::vector<double> tempBinsVertexNumContrib = tempAxisVertexNumContrib.binEdges;
+    std::vector<double> tempBinsTrackMultiplicity = tempAxisTrackMultiplicity.binEdges;
+    for (int ibin = 0; ibin < tempAxisVertexNumContrib.nBins.value() + 1; ibin++) {
+      vecBinsVertexNumContrib.push_back(tempBinsVertexNumContrib[0] + static_cast<double>(ibin) * ((tempBinsVertexNumContrib[tempBinsVertexNumContrib.size() - 1] - tempBinsVertexNumContrib[0]) / tempAxisVertexNumContrib.nBins.value()));
+    }
+    for (int ibin = 0; ibin < tempAxisTrackMultiplicity.nBins.value() + 1; ibin++) {
+      vecBinsTrackMultiplicity.push_back(tempBinsTrackMultiplicity[0] + static_cast<double>(ibin) * ((tempBinsTrackMultiplicity[tempBinsTrackMultiplicity.size() - 1] - tempBinsTrackMultiplicity[0]) / tempAxisTrackMultiplicity.nBins.value()));
+    }
+    // End of this section.
+
     const AxisSpec axisPt{binsPt, "#it{p}_{T} [GeV/c]"};
-    const AxisSpec axisInvPt{100, -10, 10, "1/#it{p}_{T}_{gen} [GeV/c]^{-1}"};
+    const AxisSpec axisInvPt{binsInvPt, "1/#it{p}_{T, gen} [GeV/c]^{-1}"};
     const AxisSpec axisEta{180, -0.9, 0.9, "#it{#eta}"};
     const AxisSpec axisPhi{180, 0., 2 * M_PI, "#it{#varphi} [rad]"};
-    const AxisSpec axisVertexNumContrib{5000, 0, 5000, "Number Of contributors to the PV"};
+    const AxisSpec axisVertexNumContrib{(overwriteAxisRangeForPbPb ? vecBinsVertexNumContribDefaultPbPb : vecBinsVertexNumContrib), "Number Of contributors to the PV"};
     const AxisSpec axisVertexPosX{binsVertexPosXY, "X [cm]"};
     const AxisSpec axisVertexPosY{binsVertexPosXY, "Y [cm]"};
     const AxisSpec axisVertexPosZ{binsVertexPosZ, "Z [cm]"};
     const AxisSpec axisVertexCov{100, -0.005, 0.005};
     const AxisSpec axisVertexPosReso{100, -0.5, 0.5};
-    const AxisSpec axisTrackMultiplicity{binsTrackMultiplicity, "Track Multiplicity"};
+    const AxisSpec axisTrackMultiplicity{(overwriteAxisRangeForPbPb ? vecBinsTrackMultiplicityDefaultPbPb : vecBinsTrackMultiplicity), "Track Multiplicity"};
     const AxisSpec axisParX{300, 0, 600, "#it{x} [cm]"};
     const AxisSpec axisParY{200, -0.5, 0.5, "#it{y} [cm]"};
     const AxisSpec axisParZ{200, -11., 11., "#it{z} [cm]"};
@@ -148,7 +196,10 @@ struct qaEventTrack {
     const AxisSpec axisParSnp{11, -0.1, 0.1, "snp"};
     const AxisSpec axisParTgl{200, -1., 1., "tgl"};
 
-    const AxisSpec axisDeltaPt{binsDeltaPt, "#it{p}_{T, rec} - #it{p}_{T, gen}"};
+    const AxisSpec axisDeltaPt{binsDeltaPt, "#it{p}_{T, rec} - #it{p}_{T, gen} [GeV/c]"};
+    const AxisSpec axisDeltaPtScaled{binsDeltaPt, "(#it{p}_{T, rec} - #it{p}_{T, gen}) / #it{p}_{T, gen}"};
+    const AxisSpec axisDeltaInvPt{binsDeltaPt, "1/#it{p}_{T, rec} - 1/#it{p}_{T, gen} [GeV/c]^{-1}"};
+    const AxisSpec axisPullInvPt{100, -4., 4., "(1/#it{p}_{T, rec} - 1/#it{p}_{T, gen})/#sigma_{1/#it{p}_{T}}"};
     const AxisSpec axisDeltaEta{100, -0.1, 0.1, "#eta_{rec} - #eta_{gen}"};
     const AxisSpec axisDeltaPhi{100, -0.1, 0.1, "#varphi_{rec} - #varphi_{gen}"};
 
@@ -167,7 +218,7 @@ struct qaEventTrack {
     histos.add("Events/nContribVsFilteredMult", "", kTH2D, {axisVertexNumContrib, axisTrackMultiplicity});
     histos.add("Events/nContribVsMult", "", kTH2D, {axisVertexNumContrib, axisTrackMultiplicity});
     histos.add("Events/nContribWithTOFvsWithTRD", ";PV contrib. with TOF; PV contrib. with TRD;", kTH2D, {axisVertexNumContrib, axisVertexNumContrib});
-    histos.add("Events/nContribAllvsWithTRD", ";PV contrib. all PV contrib. with TRD;", kTH2D, {axisVertexNumContrib, axisVertexNumContrib});
+    histos.add("Events/nContribAllvsWithTRD", ";PV contrib. all; PV contrib. with TRD;", kTH2D, {axisVertexNumContrib, axisVertexNumContrib});
     histos.add("Events/vertexChi2", ";#chi^{2}", kTH1D, {{100, 0, 100}});
 
     histos.add("Events/covXX", ";Cov_{xx} [cm^{2}]", kTH1D, {axisVertexCov});
@@ -177,8 +228,8 @@ struct qaEventTrack {
     histos.add("Events/covYZ", ";Cov_{yz} [cm^{2}]", kTH1D, {axisVertexCov});
     histos.add("Events/covZZ", ";Cov_{zz} [cm^{2}]", kTH1D, {axisVertexCov});
 
-    histos.add("Events/nFilteredTracks", "", kTH1D, {axisTrackMultiplicity});
-    histos.add("Events/nTracks", "", kTH1D, {axisTrackMultiplicity});
+    histos.add("Events/nFilteredTracks", ";n filtered tracks", kTH1D, {axisTrackMultiplicity});
+    histos.add("Events/nTracks", ";track multiplicity", kTH1D, {axisTrackMultiplicity});
 
     if (doprocessMC || doprocessRun2ConvertedMC) {
       histos.add<TH2>("Events/resoX", ";X_{Rec} - X_{Gen} [cm]", kTH2D, {axisVertexPosReso, axisVertexNumContrib});
@@ -204,18 +255,55 @@ struct qaEventTrack {
     histos.add("Tracks/Kine/phivspt", "#varphi vs #it{p}_{T}", kTH2F, {axisPt, axisPhi});
     if (doprocessMC || doprocessRun2ConvertedMC) {
       histos.add<TH2>("Tracks/Kine/resoPt", "", kTH2D, {axisDeltaPt, axisPt});
-      histos.add<TH2>("Tracks/Kine/resoInvPtVsPt", "", kTH2D, {axisDeltaPt, axisPt})->GetXaxis()->SetTitle("1/#it{p}_{T}_{rec} - 1/#it{p}_{T}_{gen} [GeV/c]^{-1}");
-      histos.add<TH2>("Tracks/Kine/resoInvPt", "", kTH2D, {axisDeltaPt, axisInvPt})->GetXaxis()->SetTitle("1/#it{p}_{T}_{rec} - 1/#it{p}_{T}_{gen} [GeV/c]^{-1}");
-      histos.add<TH2>("Tracks/Kine/ptVsptmc", "", kTH2D, {axisPt, axisPt})->GetXaxis()->SetTitle("#it{p}_{T}_{gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtEtaPlus", "", kTH2D, {axisDeltaPt, axisPt});
+      histos.add<TH2>("Tracks/Kine/resoPtEtaMinus", "", kTH2D, {axisDeltaPt, axisPt});
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmc", "", kTH2D, {axisDeltaPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcEtaPlus", "", kTH2D, {axisDeltaPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcEtaMinus", "", kTH2D, {axisDeltaPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcScaled", "", kTH2D, {axisDeltaPtScaled, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcScaledEtaPlus", "", kTH2D, {axisDeltaPtScaled, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcScaledEtaMinus", "", kTH2D, {axisDeltaPtScaled, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsInvPtmc", "", kTH2D, {axisPullInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsInvPtmcEtaPlus", "", kTH2D, {axisPullInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsInvPtmcEtaMinus", "", kTH2D, {axisPullInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsPtmc", "", kTH2D, {axisPullInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsPtmcEtaPlus", "", kTH2D, {axisPullInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsPtmcEtaMinus", "", kTH2D, {axisPullInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoInvPtVsPt", "", kTH2D, {axisDeltaInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoInvPtVsPtEtaPlus", "", kTH2D, {axisDeltaInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoInvPtVsPtEtaMinus", "", kTH2D, {axisDeltaInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoInvPt", "", kTH2D, {axisDeltaInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/resoInvPtEtaPlus", "", kTH2D, {axisDeltaInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/resoInvPtEtaMinus", "", kTH2D, {axisDeltaInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/ptVsptmc", "", kTH2D, {axisPt, axisPt})->GetXaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
       histos.add<TH2>("Tracks/Kine/resoEta", "", kTH2D, {axisDeltaEta, axisEta})->GetYaxis()->SetTitle("#eta_{rec}");
       histos.add<TH2>("Tracks/Kine/resoPhi", "", kTH2D, {axisDeltaPhi, axisPhi})->GetYaxis()->SetTitle("#varphi_{rec}");
+
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcWrongPIDinTrk", "", kTH2D, {axisDeltaPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcEtaPlusWrongPIDinTrk", "", kTH2D, {axisDeltaPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcEtaMinusWrongPIDinTrk", "", kTH2D, {axisDeltaPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcScaledWrongPIDinTrk", "", kTH2D, {axisDeltaPtScaled, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcScaledEtaPlusWrongPIDinTrk", "", kTH2D, {axisDeltaPtScaled, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoPtVsptmcScaledEtaMinusWrongPIDinTrk", "", kTH2D, {axisDeltaPtScaled, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsInvPtmcWrongPIDinTrk", "", kTH2D, {axisPullInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsInvPtmcEtaPlusWrongPIDinTrk", "", kTH2D, {axisPullInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsInvPtmcEtaMinusWrongPIDinTrk", "", kTH2D, {axisPullInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsPtmcWrongPIDinTrk", "", kTH2D, {axisPullInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsPtmcEtaPlusWrongPIDinTrk", "", kTH2D, {axisPullInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/pullInvPtVsPtmcEtaMinusWrongPIDinTrk", "", kTH2D, {axisPullInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoInvPtVsPtWrongPIDinTrk", "", kTH2D, {axisDeltaInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoInvPtVsPtEtaPlusWrongPIDinTrk", "", kTH2D, {axisDeltaInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoInvPtVsPtEtaMinusWrongPIDinTrk", "", kTH2D, {axisDeltaInvPt, axisPt})->GetYaxis()->SetTitle("#it{p}_{T, gen} [GeV/c]");
+      histos.add<TH2>("Tracks/Kine/resoInvPtWrongPIDinTrk", "", kTH2D, {axisDeltaInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/resoInvPtEtaPlusWrongPIDinTrk", "", kTH2D, {axisDeltaInvPt, axisInvPt});
+      histos.add<TH2>("Tracks/Kine/resoInvPtEtaMinusWrongPIDinTrk", "", kTH2D, {axisDeltaInvPt, axisInvPt});
     }
-    histos.add("Tracks/Kine/relativeResoPt", "relative #it{p}_{T} resolution;#sigma{#it{p}_{T}}/#it{p}_{T};#it{p}_{T}", kTH2D, {{axisPt, {100, 0., 0.3}}});
-    histos.add("Tracks/Kine/relativeResoPtEtaPlus", "relative #it{p}_{T} resolution positive #eta;#sigma{#it{p}_{T}}/#it{p}_{T} (#eta>0);#it{p}_{T}", kTH2D, {{axisPt, {100, 0., 0.3}}});
-    histos.add("Tracks/Kine/relativeResoPtEtaMinus", "relative #it{p}_{T} resolution negative #eta;#sigma{#it{p}_{T}}/#it{p}_{T} (#eta<0);#it{p}_{T}", kTH2D, {{axisPt, {100, 0., 0.3}}});
-    histos.add("Tracks/Kine/relativeResoPtEtaWithin04", "relative #it{p}_{T} resolution for |#eta| < 0.4;#sigma{#it{p}_{T}}/#it{p}_{T} (#eta>0);#it{p}_{T}", kTH2D, {{axisPt, {100, 0., 0.3}}});
-    histos.add("Tracks/Kine/relativeResoPtEtaAbove04", "relative #it{p}_{T} resolution for |#eta| > 0.4;#sigma{#it{p}_{T}}/#it{p}_{T} (#eta<0);#it{p}_{T}", kTH2D, {{axisPt, {100, 0., 0.3}}});
-    histos.add("Tracks/Kine/relativeResoPtMean", "mean relative #it{p}_{T} resolution;#LT#sigma{#it{p}}/#it{p}_{T}#GT;#it{p}_{T}", kTProfile, {{axisPt}});
+    histos.add("Tracks/Kine/relativeResoPt", "relative #it{p}_{T} resolution; #it{p}_{T}; #sigma(#it{p}_{T})/#it{p}_{T}", kTH2D, {{axisPt, {100, 0., 0.3}}});
+    histos.add("Tracks/Kine/relativeResoPtEtaPlus", "relative #it{p}_{T} resolution positive #eta; #it{p}_{T}; #sigma(#it{p}_{T})/#it{p}_{T} (#eta>0)", kTH2D, {{axisPt, {100, 0., 0.3}}});
+    histos.add("Tracks/Kine/relativeResoPtEtaMinus", "relative #it{p}_{T} resolution negative #eta; #it{p}_{T}; #sigma(#it{p}_{T})/#it{p}_{T} (#eta<0)", kTH2D, {{axisPt, {100, 0., 0.3}}});
+    histos.add("Tracks/Kine/relativeResoPtEtaWithin04", "relative #it{p}_{T} resolution for |#eta| < 0.4; #it{p}_{T}; #sigma(#it{p}_{T})/#it{p}_{T} (|#eta|<0.4)", kTH2D, {{axisPt, {100, 0., 0.3}}});
+    histos.add("Tracks/Kine/relativeResoPtEtaAbove04", "relative #it{p}_{T} resolution for |#eta| > 0.4; #it{p}_{T}; #sigma(#it{p}_{T})/#it{p}_{T} (|#eta|>0.4)", kTH2D, {{axisPt, {100, 0., 0.3}}});
+    histos.add("Tracks/Kine/relativeResoPtMean", "mean relative #it{p}_{T} resolution; #it{p}_{T}; #LT#sigma(#it{p}_{T})/#it{p}_{T}#GT", kTProfile, {{axisPt}});
 
     // count filtered tracks matched to a collision
     auto h1 = histos.add<TH1>("Tracks/KineUnmatchTracks/trackCollMatch", "Filtered track - collision matching", kTH1D, {{5, 0.5, 5.5, ""}});
@@ -343,6 +431,10 @@ struct qaEventTrack {
     h4->GetXaxis()->SetTitle("#eta");
     h4->GetYaxis()->SetTitle("# clusters TPC");
     h4->GetZaxis()->SetTitle("#varphi");
+    auto h5 = histos.add<TH3>("Tracks/TPC/tpcNClsFoundVsEtaVsPt", "filtered tracks; #eta; #it{p}_{T}; # clusters TPC", kTH3D, {axisEta, {165, -0.5, 164.5}, axisPt});
+    h5->GetXaxis()->SetTitle("#eta");
+    h5->GetYaxis()->SetTitle("# clusters TPC");
+    h5->GetZaxis()->SetTitle("#it{p}_{T}");
     histos.add("Tracks/TPC/tpcNClsShared", "number of shared TPC clusters;# shared clusters TPC", kTH1D, {{165, -0.5, 164.5}});
     histos.add("Tracks/TPC/tpcCrossedRows", "number of crossed TPC rows;# crossed rows TPC", kTH1D, {{165, -0.5, 164.5}});
     histos.add("Tracks/TPC/tpcFractionSharedCls", "fraction of shared TPC clusters;fraction shared clusters TPC", kTH1D, {{100, 0., 1.}});
@@ -566,6 +658,9 @@ struct qaEventTrack {
     if (selectGoodEvents && !(isRun3 ? collision.sel8() : collision.sel7())) { // currently only sel8 is defined for run3
       return false;
     }
+    if (tfCut && !collision.selection_bit(o2::aod::evsel::kNoTimeFrameBorder)) {
+      return false;
+    }
     if constexpr (doFill) {
       histos.fill(HIST("Events/recoEff"), 2);
     }
@@ -637,7 +732,7 @@ struct qaEventTrack {
   PROCESS_SWITCH(qaEventTrack, processRun2ConvertedData, "process for run 2 converted data", false);
 
   // Process function for IU vs DCA track comparison
-  using FullTracksIU = soa::Join<aod::TracksIU, aod::TracksExtra, aod::TracksCov>;
+  using FullTracksIU = soa::Join<aod::TracksIU, aod::TracksExtra, aod::TracksCovIU>;
   void processDataIU(CollisionTableData::iterator const& collision,
                      soa::Join<aod::FullTracks, aod::TracksDCA> const& tracksUnfiltered,
                      FullTracksIU const& tracksIU)
@@ -909,7 +1004,7 @@ struct qaEventTrack {
   using TrackTableMC = soa::Join<TrackTableData, aod::McTrackLabels>;
   void processMC(CollisionTableMC const& collisions, soa::Filtered<TrackTableMC> const& tracks, soa::Join<aod::FullTracks, aod::McTrackLabels> const& tracksUnfiltered,
                  aod::AmbiguousTracks const& ambitracks,
-                 aod::McParticles const& mcParticles, aod::McCollisions const& mcCollisions)
+                 aod::McParticles const&, aod::McCollisions const&)
   {
     /// work with all filtered tracks
     fillRecoHistogramsAllTracks<true, true>(tracks, ambitracks);
@@ -996,7 +1091,7 @@ struct qaEventTrack {
 
   /// process for run 2 converted MC
   void processRun2ConvertedMC(CollisionTableMC const& collisions, soa::Filtered<TrackTableMC> const& tracks, soa::Join<aod::FullTracks, aod::McTrackLabels> const& tracksUnfiltered,
-                              aod::McParticles const& mcParticles, aod::McCollisions const& mcCollisions)
+                              aod::McParticles const&, aod::McCollisions const&)
   {
     /// work with collision grouping
     for (auto const& collision : collisions) {
@@ -1449,6 +1544,7 @@ void qaEventTrack::fillRecoHistogramsGroupedTracks(const C& collision, const T& 
     histos.fill(HIST("Tracks/TPC/tpcNClsFoundVsEta"), track.eta(), track.tpcNClsFound());
     histos.fill(HIST("Tracks/TPC/tpcNClsFoundVsEtaVtxZ"), track.eta(), track.tpcNClsFound(), collision.posZ());
     histos.fill(HIST("Tracks/TPC/tpcNClsFoundVsEtaPhi"), track.eta(), track.tpcNClsFound(), track.phi());
+    histos.fill(HIST("Tracks/TPC/tpcNClsFoundVsEtaVsPt"), track.eta(), track.tpcNClsFound(), track.pt());
     histos.fill(HIST("Tracks/TPC/tpcNClsShared"), track.tpcNClsShared());
     histos.fill(HIST("Tracks/TPC/tpcCrossedRows"), track.tpcNClsCrossedRows());
     histos.fill(HIST("Tracks/TPC/tpcCrossedRowsOverFindableCls"), track.tpcCrossedRowsOverFindableCls());
@@ -1459,9 +1555,51 @@ void qaEventTrack::fillRecoHistogramsGroupedTracks(const C& collision, const T& 
 
     if constexpr (IS_MC) {
       if (track.has_mcParticle()) {
-        // resolution plots
         auto particle = track.mcParticle();
+        // resolution plots
+        if (doExtraPIDqa && track.pidForTracking() != std::abs(PartIdentifier)) {
+          // full eta range
+          histos.fill(HIST("Tracks/Kine/resoPtVsptmcWrongPIDinTrk"), track.pt() - particle.pt(), particle.pt());
+          histos.fill(HIST("Tracks/Kine/resoPtVsptmcScaledWrongPIDinTrk"), (track.pt() - particle.pt()) / particle.pt(), particle.pt());
+          histos.fill(HIST("Tracks/Kine/pullInvPtVsInvPtmcWrongPIDinTrk"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), 1.f / particle.pt());
+          histos.fill(HIST("Tracks/Kine/pullInvPtVsPtmcWrongPIDinTrk"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), particle.pt());
+          if (particle.pt() > 0.f) {
+            histos.fill(HIST("Tracks/Kine/resoInvPtWrongPIDinTrk"), std::abs(track.signed1Pt()) - 1.f / particle.pt(), 1.f / particle.pt());
+          }
+          histos.fill(HIST("Tracks/Kine/resoInvPtVsPtWrongPIDinTrk"), track.signed1Pt() - 1.f / particle.pt(), particle.pt());
+          // split eta range
+          if (eta > 0) { // positive eta
+            histos.fill(HIST("Tracks/Kine/resoPtVsptmcEtaPlusWrongPIDinTrk"), track.pt() - particle.pt(), particle.pt());
+            histos.fill(HIST("Tracks/Kine/resoPtVsptmcScaledEtaPlusWrongPIDinTrk"), (track.pt() - particle.pt()) / particle.pt(), particle.pt());
+            histos.fill(HIST("Tracks/Kine/pullInvPtVsInvPtmcEtaPlusWrongPIDinTrk"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), 1.f / particle.pt());
+            histos.fill(HIST("Tracks/Kine/pullInvPtVsPtmcEtaPlusWrongPIDinTrk"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), particle.pt());
+            if (particle.pt() > 0.f) {
+              histos.fill(HIST("Tracks/Kine/resoInvPtEtaPlusWrongPIDinTrk"), std::abs(track.signed1Pt()) - 1.f / particle.pt(), 1.f / particle.pt());
+            }
+            histos.fill(HIST("Tracks/Kine/resoInvPtVsPtEtaPlusWrongPIDinTrk"), track.signed1Pt() - 1.f / particle.pt(), particle.pt());
+          } else { // negative eta
+            histos.fill(HIST("Tracks/Kine/resoPtVsptmcEtaMinusWrongPIDinTrk"), track.pt() - particle.pt(), particle.pt());
+            histos.fill(HIST("Tracks/Kine/resoPtVsptmcScaledEtaMinusWrongPIDinTrk"), (track.pt() - particle.pt()) / particle.pt(), particle.pt());
+            histos.fill(HIST("Tracks/Kine/pullInvPtVsInvPtmcEtaMinusWrongPIDinTrk"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), 1.f / particle.pt());
+            histos.fill(HIST("Tracks/Kine/pullInvPtVsPtmcEtaMinusWrongPIDinTrk"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), particle.pt());
+            if (particle.pt() > 0.f) {
+              histos.fill(HIST("Tracks/Kine/resoInvPtEtaMinusWrongPIDinTrk"), std::abs(track.signed1Pt()) - 1.f / particle.pt(), 1.f / particle.pt());
+            }
+            histos.fill(HIST("Tracks/Kine/resoInvPtVsPtEtaMinusWrongPIDinTrk"), track.signed1Pt() - 1.f / particle.pt(), particle.pt());
+          }
+        }
+
+        // optionally check for PID in tracking
+        if (checkPIDforTracking && track.pidForTracking() != std::abs(PartIdentifier)) {
+          continue;
+        }
+
+        // full eta range
         histos.fill(HIST("Tracks/Kine/resoPt"), track.pt() - particle.pt(), track.pt());
+        histos.fill(HIST("Tracks/Kine/resoPtVsptmc"), track.pt() - particle.pt(), particle.pt());
+        histos.fill(HIST("Tracks/Kine/resoPtVsptmcScaled"), (track.pt() - particle.pt()) / particle.pt(), particle.pt());
+        histos.fill(HIST("Tracks/Kine/pullInvPtVsInvPtmc"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), 1.f / particle.pt());
+        histos.fill(HIST("Tracks/Kine/pullInvPtVsPtmc"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), particle.pt());
         if (particle.pt() > 0.f) {
           histos.fill(HIST("Tracks/Kine/resoInvPt"), std::abs(track.signed1Pt()) - 1.f / particle.pt(), 1.f / particle.pt());
         }
@@ -1469,6 +1607,28 @@ void qaEventTrack::fillRecoHistogramsGroupedTracks(const C& collision, const T& 
         histos.fill(HIST("Tracks/Kine/ptVsptmc"), particle.pt(), track.pt());
         histos.fill(HIST("Tracks/Kine/resoEta"), track.eta() - particle.eta(), track.eta());
         histos.fill(HIST("Tracks/Kine/resoPhi"), track.phi() - particle.phi(), track.phi());
+        // split eta range
+        if (eta > 0) { // positive eta
+          histos.fill(HIST("Tracks/Kine/resoPtEtaPlus"), track.pt() - particle.pt(), track.pt());
+          histos.fill(HIST("Tracks/Kine/resoPtVsptmcEtaPlus"), track.pt() - particle.pt(), particle.pt());
+          histos.fill(HIST("Tracks/Kine/resoPtVsptmcScaledEtaPlus"), (track.pt() - particle.pt()) / particle.pt(), particle.pt());
+          histos.fill(HIST("Tracks/Kine/pullInvPtVsInvPtmcEtaPlus"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), 1.f / particle.pt());
+          histos.fill(HIST("Tracks/Kine/pullInvPtVsPtmcEtaPlus"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), particle.pt());
+          if (particle.pt() > 0.f) {
+            histos.fill(HIST("Tracks/Kine/resoInvPtEtaPlus"), std::abs(track.signed1Pt()) - 1.f / particle.pt(), 1.f / particle.pt());
+          }
+          histos.fill(HIST("Tracks/Kine/resoInvPtVsPtEtaPlus"), track.signed1Pt() - 1.f / particle.pt(), particle.pt());
+        } else { // negative eta
+          histos.fill(HIST("Tracks/Kine/resoPtEtaMinus"), track.pt() - particle.pt(), track.pt());
+          histos.fill(HIST("Tracks/Kine/resoPtVsptmcEtaMinus"), track.pt() - particle.pt(), particle.pt());
+          histos.fill(HIST("Tracks/Kine/resoPtVsptmcScaledEtaMinus"), (track.pt() - particle.pt()) / particle.pt(), particle.pt());
+          histos.fill(HIST("Tracks/Kine/pullInvPtVsInvPtmcEtaMinus"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), 1.f / particle.pt());
+          histos.fill(HIST("Tracks/Kine/pullInvPtVsPtmcEtaMinus"), (std::abs(track.signed1Pt()) - 1.f / particle.pt()) / std::sqrt(track.c1Pt21Pt2()), particle.pt());
+          if (particle.pt() > 0.f) {
+            histos.fill(HIST("Tracks/Kine/resoInvPtEtaMinus"), std::abs(track.signed1Pt()) - 1.f / particle.pt(), 1.f / particle.pt());
+          }
+          histos.fill(HIST("Tracks/Kine/resoInvPtVsPtEtaMinus"), track.signed1Pt() - 1.f / particle.pt(), particle.pt());
+        }
       }
     }
 

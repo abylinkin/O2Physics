@@ -132,9 +132,11 @@ struct tofPidQa {
   Configurable<bool> applyRapidityCut{"applyRapidityCut", false, "Flag to apply rapidity cut"};
   Configurable<bool> enableEvTimeSplitting{"enableEvTimeSplitting", false, "Flag to enable histograms splitting depending on the Event Time used"};
   Configurable<bool> produceDeltaTEtaPhiMap{"produceDeltaTEtaPhiMap", false, "Produces the map of the delta time as a function of eta and phi"};
-  Configurable<float> ptDeltaTEtaPhiMap{"ptDeltaTEtaPhiMap", 3.f, "Threshold in pT to build the map of the delta time as a function of eta and phi"};
+  Configurable<float> ptDeltaTEtaPhiMapMin{"ptDeltaTEtaPhiMapMin", 1.45f, "Threshold in pT to build the map of the delta time as a function of eta and phi"};
+  Configurable<float> ptDeltaTEtaPhiMapMax{"ptDeltaTEtaPhiMapMax", 1.55f, "Threshold in pT to build the map of the delta time as a function of eta and phi"};
   Configurable<bool> splitSignalPerCharge{"splitSignalPerCharge", true, "Split the signal per charge (reduces memory footprint if off)"};
   Configurable<bool> enableVsMomentumHistograms{"enableVsMomentumHistograms", false, "Enables plots vs momentum instead of just pT (reduces memory footprint if off)"};
+  Configurable<bool> requireGoodMatchTracks{"requireGoodMatchTracks", false, "Require good match tracks"};
 
   template <o2::track::PID::ID id>
   void initPerParticle(const AxisSpec& pAxis,
@@ -223,7 +225,7 @@ struct tofPidQa {
       histos.add(hdelta_pt[id].data(), axisTitle, kTH2F, {ptAxis, deltaAxis});
     }
     if (produceDeltaTEtaPhiMap) {
-      histos.add(hdelta_etaphi[id].data(), Form("%s, #it{p}_{T} > %.2f", axisTitle, ptDeltaTEtaPhiMap.value), kTH3F, {etaAxis, phiAxis, deltaAxis});
+      histos.add(hdelta_etaphi[id].data(), Form("%s, %.2f < #it{p}_{T} < %.2f", axisTitle, ptDeltaTEtaPhiMapMin.value, ptDeltaTEtaPhiMapMax.value), kTH3F, {etaAxis, phiAxis, deltaAxis});
     }
 
     // Exp Sigma
@@ -287,6 +289,7 @@ struct tofPidQa {
     h->GetXaxis()->SetBinLabel(3, "hasITS");
     h->GetXaxis()->SetBinLabel(4, "hasTPC");
     h->GetXaxis()->SetBinLabel(5, "hasTOF");
+    h->GetXaxis()->SetBinLabel(6, "goodTOFMatch");
 
     histos.add("event/vertexz", "", kTH1D, {vtxZAxis});
     h = histos.add<TH1>("event/particlehypo", "", kTH1D, {{10, 0, 10, "PID in tracking"}});
@@ -412,7 +415,7 @@ struct tofPidQa {
   }
 
   template <bool fillHistograms, typename CollisionType, typename TrackType>
-  bool isTrackSelected(const CollisionType& collision, const TrackType& track)
+  bool isTrackSelected(const CollisionType&, const TrackType& track)
   {
     if constexpr (fillHistograms) {
       histos.fill(HIST("event/trackselection"), 1.f);
@@ -440,6 +443,12 @@ struct tofPidQa {
     }
     if constexpr (fillHistograms) {
       histos.fill(HIST("event/trackselection"), 5.f);
+    }
+    if (requireGoodMatchTracks.value && !track.goodTOFMatch()) { // Skipping tracks without good match
+      return false;
+    }
+    if constexpr (fillHistograms) {
+      histos.fill(HIST("event/trackselection"), 6.f);
       histos.fill(HIST("event/particlehypo"), track.pidForTracking());
       if (track.has_collision()) {
         histos.fill(HIST("event/tofsignal"), track.p(), track.tofSignal());
@@ -469,7 +478,8 @@ struct tofPidQa {
                        ((trackSelection.node() == 5) && requireInAcceptanceTracksInFilter());
   using CollisionCandidate = soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator;
   using TrackCandidates = soa::Join<aod::Tracks, aod::TracksExtra, aod::TrackSelection,
-                                    aod::pidEvTimeFlags, aod::TOFSignal, aod::TOFEvTime>;
+                                    aod::pidEvTimeFlags, aod::TOFSignal, aod::TOFEvTime,
+                                    aod::pidTOFFlags>;
 
   void process(CollisionCandidate const& collision,
                soa::Filtered<TrackCandidates> const& tracks)
@@ -553,7 +563,7 @@ struct tofPidQa {
         }
 
         if (produceDeltaTEtaPhiMap) {
-          if (t.pt() > ptDeltaTEtaPhiMap) {
+          if (t.pt() > ptDeltaTEtaPhiMapMin && t.pt() < ptDeltaTEtaPhiMapMax) {
             histos.fill(HIST(hdelta_etaphi[id]), t.eta(), t.phi(), diff);
           }
         }

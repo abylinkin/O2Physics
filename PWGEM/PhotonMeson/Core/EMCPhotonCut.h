@@ -75,7 +75,7 @@ class EMCPhotonCut : public TNamed
   // Temporary function to check if cluster passes a given selection criteria. To be replaced by framework filters.
   // Returns true if a cluster survives the cuts!
   template <typename Cluster, typename Track>
-  bool IsSelectedEMCal(const EMCPhotonCuts& cut, Cluster const& cluster, Track const& track) const
+  bool IsSelectedEMCal(const EMCPhotonCuts& cut, Cluster const& cluster, Track const& /*track*/) const
   {
     switch (cut) {
       case EMCPhotonCuts::kEnergy:
@@ -85,7 +85,7 @@ class EMCPhotonCut : public TNamed
         return cluster.nCells() >= mMinNCell;
 
       case EMCPhotonCuts::kM02:
-        return mMinM02 <= cluster.m02() && cluster.m02() <= mMaxM02;
+        return (cluster.nCells() == 1 || (mMinM02 <= cluster.m02() && cluster.m02() <= mMaxM02));
 
       case EMCPhotonCuts::kTiming:
         return mMinTime <= cluster.time() && cluster.time() <= mMaxTime;

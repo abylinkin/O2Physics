@@ -20,6 +20,7 @@
 
 #include <onnxruntime/core/session/experimental_onnxruntime_cxx_api.h> // needed for HFFilterHelpers, to be fixed
 
+#include "CommonConstants/PhysicsConstants.h"
 #include "CCDB/BasicCCDBManager.h"
 #include "DataFormatsParameters/GRPMagField.h"
 #include "DataFormatsParameters/GRPObject.h"
@@ -99,8 +100,8 @@ struct HfFilterPrepareMlSamples { // Main struct
       auto trackParNeg = getTrackPar(trackNeg);
       o2::gpu::gpustd::array<float, 2> dcaPos{trackPos.dcaXY(), trackPos.dcaZ()};
       o2::gpu::gpustd::array<float, 2> dcaNeg{trackNeg.dcaXY(), trackNeg.dcaZ()};
-      std::array<float, 3> pVecPos{trackPos.px(), trackPos.py(), trackPos.pz()};
-      std::array<float, 3> pVecNeg{trackNeg.px(), trackNeg.py(), trackNeg.pz()};
+      std::array<float, 3> pVecPos{trackPos.pVector()};
+      std::array<float, 3> pVecNeg{trackNeg.pVector()};
       if (trackPos.collisionId() != thisCollId) {
         o2::base::Propagator::Instance()->propagateToDCABxByBz({collision.posX(), collision.posY(), collision.posZ()}, trackParPos, 2.f, noMatCorr, &dcaPos);
         getPxPyPz(trackParPos, pVecPos);
@@ -121,7 +122,7 @@ struct HfFilterPrepareMlSamples { // Main struct
 
       // D0(bar) → π± K∓
       bool isInCorrectColl{false};
-      auto indexRec = RecoDecay::getMatchedMCRec(mcParticles, std::array{trackPos, trackNeg}, pdg::Code::kD0, std::array{+kPiPlus, -kKPlus}, true, &sign);
+      auto indexRec = RecoDecay::getMatchedMCRec(mcParticles, std::array{trackPos, trackNeg}, o2::constants::physics::Pdg::kD0, std::array{+kPiPlus, -kKPlus}, true, &sign);
       if (indexRec > -1) {
         auto particle = mcParticles.rawIteratorAt(indexRec);
         flag = RecoDecay::getCharmHadronOrigin(mcParticles, particle);
@@ -161,9 +162,9 @@ struct HfFilterPrepareMlSamples { // Main struct
       o2::gpu::gpustd::array<float, 2> dcaFirst{trackFirst.dcaXY(), trackFirst.dcaZ()};
       o2::gpu::gpustd::array<float, 2> dcaSecond{trackSecond.dcaXY(), trackSecond.dcaZ()};
       o2::gpu::gpustd::array<float, 2> dcaThird{trackThird.dcaXY(), trackThird.dcaZ()};
-      std::array<float, 3> pVecFirst{trackFirst.px(), trackFirst.py(), trackFirst.pz()};
-      std::array<float, 3> pVecSecond{trackSecond.px(), trackSecond.py(), trackSecond.pz()};
-      std::array<float, 3> pVecThird{trackThird.px(), trackThird.py(), trackThird.pz()};
+      std::array<float, 3> pVecFirst{trackFirst.pVector()};
+      std::array<float, 3> pVecSecond{trackSecond.pVector()};
+      std::array<float, 3> pVecThird{trackThird.pVector()};
       if (trackFirst.collisionId() != thisCollId) {
         o2::base::Propagator::Instance()->propagateToDCABxByBz({collision.posX(), collision.posY(), collision.posZ()}, trackParFirst, 2.f, noMatCorr, &dcaFirst);
         getPxPyPz(trackParFirst, pVecFirst);
@@ -202,27 +203,27 @@ struct HfFilterPrepareMlSamples { // Main struct
       int8_t channel = -1;
 
       // D± → π± K∓ π±
-      auto indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughters, pdg::Code::kDPlus, std::array{+kPiPlus, -kKPlus, +kPiPlus}, true, &sign, 2);
+      auto indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughters, o2::constants::physics::Pdg::kDPlus, std::array{+kPiPlus, -kKPlus, +kPiPlus}, true, &sign, 2);
       if (indexRec >= 0) {
         channel = kDplus;
       }
       if (indexRec < 0) {
         // Ds± → K± K∓ π±
-        indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughters, pdg::Code::kDS, std::array{+kKPlus, -kKPlus, +kPiPlus}, true, &sign, 2);
+        indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughters, o2::constants::physics::Pdg::kDS, std::array{+kKPlus, -kKPlus, +kPiPlus}, true, &sign, 2);
         if (indexRec >= 0) {
           channel = kDs;
         }
       }
       if (indexRec < 0) {
         // Λc± → p± K∓ π±
-        indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughters, pdg::Code::kLambdaCPlus, std::array{+kProton, -kKPlus, +kPiPlus}, true, &sign, 2);
+        indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughters, o2::constants::physics::Pdg::kLambdaCPlus, std::array{+kProton, -kKPlus, +kPiPlus}, true, &sign, 2);
         if (indexRec >= 0) {
           channel = kLc;
         }
       }
       if (indexRec < 0) {
         // Ξc± → p± K∓ π±
-        indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughters, pdg::Code::kXiCPlus, std::array{+kProton, -kKPlus, +kPiPlus}, true, &sign, 2);
+        indexRec = RecoDecay::getMatchedMCRec(mcParticles, arrayDaughters, o2::constants::physics::Pdg::kXiCPlus, std::array{+kProton, -kKPlus, +kPiPlus}, true, &sign, 2);
         if (indexRec >= 0) {
           channel = kXic;
         }

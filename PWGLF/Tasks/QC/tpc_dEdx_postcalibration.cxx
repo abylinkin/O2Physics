@@ -210,7 +210,7 @@ struct tpc_dEdx_postcalibration {
 
   // Single-Track Selection
   template <typename T1, typename C>
-  bool passedSingleTrackSelection(const T1& track, const C& collision)
+  bool passedSingleTrackSelection(const T1& track, const C& /*collision*/)
   {
     // Single-Track Selections
     if (!track.hasTPC())
@@ -231,9 +231,9 @@ struct tpc_dEdx_postcalibration {
 
   // General V0 Selections
   template <typename T1, typename C>
-  bool passedV0Selection(const T1& v0, const C& collision)
+  bool passedV0Selection(const T1& v0, const C& /*collision*/)
   {
-    if (v0.v0cosPA(collision.posX(), collision.posY(), collision.posZ()) < v0cospaMin)
+    if (v0.v0cosPA() < v0cospaMin)
       return false;
     if (v0.v0radius() < minimumV0Radius || v0.v0radius() > maximumV0Radius)
       return false;
@@ -367,10 +367,8 @@ struct tpc_dEdx_postcalibration {
 
       // Kaons
       if (trk.tpcInnerParam() > 0.4 && trk.hasTOF() && TMath::Abs(trk.tofNSigmaKa()) < 2.0) {
-        registryKa.fill(HIST("dEdx_vs_Momentum_Ka"), signedP,
-                        trk.tpcSignal());
-        registryKa.fill(HIST("nsigmaTPC_vs_Momentum_Ka"), signedP,
-                        trk.tpcNSigmaKa());
+        registryKa.fill(HIST("dEdx_vs_Momentum_Ka"), signedP, trk.tpcSignal());
+        registryKa.fill(HIST("nsigmaTPC_vs_Momentum_Ka"), signedP, trk.tpcNSigmaKa());
 
         if (doContaminations) {
           registryKa.fill(HIST("nsigmaTPC_vs_Momentum_Pi"), signedP, trk.tpcNSigmaPi());
