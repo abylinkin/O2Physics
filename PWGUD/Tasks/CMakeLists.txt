@@ -15,22 +15,22 @@ o2physics_add_dpl_workflow(upc
                            COMPONENT_NAME Analysis)
 
 o2physics_add_dpl_workflow(sg-spectra
-                           SOURCES SGSpectraAnalyzer.cxx
+                           SOURCES sgSpectraAnalyzer.cxx
                            PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2::DetectorsBase
                            COMPONENT_NAME Analysis)
 
 o2physics_add_dpl_workflow(sg-fourpi
-                           SOURCES SG_FourPi_Analyzer.cxx
+                           SOURCES sgFourPiAnalyzer.cxx
                            PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2::DetectorsBase
                            COMPONENT_NAME Analysis)
 
 o2physics_add_dpl_workflow(sg-d0
-                           SOURCES SG_D0_Analyzer.cxx
+                           SOURCES sgD0Analyzer.cxx
                            PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2::DetectorsBase
                            COMPONENT_NAME Analysis)
 
 o2physics_add_dpl_workflow(sg-fit
-                           SOURCES SG_FIT_Analyzer.cxx
+                           SOURCES sgFITAnalyzer.cxx
                            PUBLIC_LINK_LIBRARIES O2::Framework O2Physics::AnalysisCore O2::DetectorsBase
                            COMPONENT_NAME Analysis)
 
