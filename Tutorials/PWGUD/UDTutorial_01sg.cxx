@@ -25,7 +25,7 @@ using namespace o2;
 using namespace o2::framework;
 using namespace o2::framework::expressions;
 
-struct UDTutorial01sg { //UDTutorial01
+struct UDTutorial01sg { // UDTutorial01
 
   // configurables
   Configurable<bool> verbose{"Verbose", {}, "Additional print outs"};
@@ -74,7 +74,7 @@ struct UDTutorial01sg { //UDTutorial01
   }
 
   // define data types
-  using UDCollisionsFull = soa::Join<aod::SGCollisions, aod::UDCollisionsSels>; //UDCollisions
+  using UDCollisionsFull = soa::Join<aod::SGCollisions, aod::UDCollisionsSels>; // UDCollisions
   using UDCollisionFull = UDCollisionsFull::iterator;
   using UDTracksFull = soa::Join<aod::UDTracks, aod::UDTracksPID, aod::UDTracksExtra, aod::UDTracksFlags>;
 

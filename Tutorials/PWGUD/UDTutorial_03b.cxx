@@ -516,7 +516,7 @@ struct UDTutorial03b {
       registry.get<TH1>(HIST("Reco/mcRap"))->Fill(lv_gen->Rapidity(), 1.);
       registry.get<TH2>(HIST("Reco/mcMPt"))->Fill(lv_gen->M(), lv_gen->Pt(), 1.);
       registry.get<TH2>(HIST("Reco/MGenMRec"))->Fill(lv_gen->M(), lv_rec->M(), 1.);
-      registry.get<TH1>(HIST("Reco/MRes"))->Fill((lv_gen->M()-lv_rec->M()), 1.);
+      registry.get<TH1>(HIST("Reco/MRes"))->Fill((lv_gen->M() - lv_rec->M()), 1.);
     }
   }
   PROCESS_SWITCH(UDTutorial03b, processReco, "Process reconstructed data", true);

@@ -161,7 +161,6 @@ DECLARE_SOA_TABLE(UDCollisions, "AOD", "UDCOLLISION",
                   collision::NumContrib,
                   udcollision::NetCharge,
                   udcollision::RgtrwTOF);
-		  
 
 DECLARE_SOA_TABLE(SGCollisions, "AOD", "SGCOLLISION",
                   o2::soa::Index<>,
@@ -173,7 +172,7 @@ DECLARE_SOA_TABLE(SGCollisions, "AOD", "SGCOLLISION",
                   collision::NumContrib,
                   udcollision::NetCharge,
                   udcollision::RgtrwTOF,
-		  udcollision::GapSide);
+                  udcollision::GapSide);
 
 DECLARE_SOA_TABLE(SGCollisions, "AOD", "SGCOLLISION",
                   udcollision::GapSide);
